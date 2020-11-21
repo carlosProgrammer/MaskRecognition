@@ -19,93 +19,93 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-# Initialize the starting learning rate, epochs to train and batch size
-init_lr = 1e-14
-epochs = 20
-batchSize = 32
+# initialize the initial learning rate, number of epochs to train for,
+# and batch size
+INIT_LR = 1e-4
+EPOCHS = 100
+BS = 32
 
-# Dataset directory and categories
-dir = r"C:\MASKRECOGNITION\dataset"
-categories = ["with_mask", "without_mask"]
+DIRECTORY = r"C:\MASKRECOGNITION\dataset"
+CATEGORIES = ["with_mask", "without_mask"]
 
-# Fetch and select the list of images in the dataset, initialize the data list and images classes
+# grab the list of images in our dataset directory, then initialize
+# the list of data (i.e., images) and class images
 print("[INFO] loading images...")
 
 data = []
 labels = []
 
-for category in categories:
-    path = os.path.join(dir, category)
+for category in CATEGORIES:
+    path = os.path.join(DIRECTORY, category)
     for img in os.listdir(path):
-        img_path = os.path.join(path, img)
-        image = load_img(img_path, target_size=(224, 224))
-        image = img_to_array(image)
-        image = preprocess_input(image)
+    	img_path = os.path.join(path, img)
+    	image = load_img(img_path, target_size=(224, 224))
+    	image = img_to_array(image)
+    	image = preprocess_input(image)
 
-        data.append(image)
-        labels.append(category)
+    	data.append(image)
+    	labels.append(category)
 
-# Label encoding
-label_bin = LabelBinarizer()
-labels = label_bin.fit_transform(labels)
+# perform one-hot encoding on the labels
+lb = LabelBinarizer()
+labels = lb.fit_transform(labels)
 labels = to_categorical(labels)
 
-data = np.array(ata, dtype="float32")
+data = np.array(data, dtype="float32")
 labels = np.array(labels)
 
-(trainX, tastX, trainY, testY) = train_test_split(data, labels, test_size=0.20, stratify=labels, random_state=42)
+(trainX, testX, trainY, testY) = train_test_split(data, labels,
+	test_size=0.20, stratify=labels, random_state=42)
 
-# Training image generator for data augmentation
-augmentation = ImageDataGenerator(
-    rotation_range = 20,
-    zoom_range = 0.15,
-    width_shift_range = 0.2,
-    height_shift_range = 0.2,
-    shear_range = 0.15,
-    horizontal_flip = True,
-    fill_mode = "nearest")
+# construct the training image generator for data augmentation
+aug = ImageDataGenerator(
+	rotation_range=20,
+	zoom_range=0.15,
+	width_shift_range=0.2,
+	height_shift_range=0.2,
+	shear_range=0.15,
+	horizontal_flip=True,
+	fill_mode="nearest")
 
-# Loading MobileNetV2 network to ensure the FC layer sets are left off
-baseModel = MobileNetV2(
-    weights = "imagenet", 
-    include_top = False,
-    input_tensor = Input (shape = (224, 224, 3)))
+# load the MobileNetV2 network, ensuring the head FC layer sets are
+# left off
+baseModel = MobileNetV2(weights="imagenet", include_top=False,
+	input_tensor=Input(shape=(224, 224, 3)))
 
-# Head of the model that will be placed on top of the baseModel
+# construct the head of the model that will be placed on top of the
+# the base model
 headModel = baseModel.output
-headModel = AveragePooling2D(pool_size = (7, 7))(headModel)
-headModel = Flatten(name = "flatten")(headModel)
-headModel = Dense(128, activation = "relu")(headModel)
+headModel = AveragePooling2D(pool_size=(7, 7))(headModel)
+headModel = Flatten(name="flatten")(headModel)
+headModel = Dense(128, activation="relu")(headModel)
 headModel = Dropout(0.5)(headModel)
-headModel = Dense(2, activation = "softmax")(headModel)
+headModel = Dense(2, activation="softmax")(headModel)
 
-# Placing the FC model on top of baseModel, this is the actual training model
-model = Model(
-    inputs = baseModel.input,
-    outputs = headModel)
+# place the head FC model on top of the base model (this will become
+# the actual model we will train)
+model = Model(inputs=baseModel.input, outputs=headModel)
 
-# Looping over every layer in the base model and freeze them so they won't be updated during the first training
+# loop over all layers in the base model and freeze them so they will
+# *not* be updated during the first training process
 for layer in baseModel.layers:
-    layer.trainable = False
+	layer.trainable = False
 
-# Compiling the model
+# compile our model
 print("[INFO] compiling model...")
-opt = Adam(lr = init_lr, decay = init_lr / epochs)
-model.compile(
-    loss = "binary_crossentropy", 
-    optimizer = opt, 
-    metrics = ["accuracy"])
+opt = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
+model.compile(loss="binary_crossentropy", optimizer=opt,
+	metrics=["accuracy"])
 
-# Training the head of the network
-print("[INFO] training head of network...")
-head = model.fit(
-    augmentation.flow(trainX, trainY, batch_size = batchSize),
-    steps_per_epoch = len(trainX) // batchSize,
-    validation_data = (testX, testY),
-    validation_steps = len(textX) // batchSize
-    epochs = epochs)
+# train the head of the network
+print("[INFO] training head...")
+H = model.fit(
+	aug.flow(trainX, trainY, batch_size=BS),
+	steps_per_epoch=len(trainX) // BS,
+	validation_data=(testX, testY),
+	validation_steps=len(testX) // BS,
+	epochs=EPOCHS)
 
-# Predictions on the testing proccess
+# make predictions on the testing set
 print("[INFO] evaluating network...")
 predIdxs = model.predict(testX, batch_size=BS)
 
@@ -134,4 +134,3 @@ plt.xlabel("Epoch #")
 plt.ylabel("Loss/Accuracy")
 plt.legend(loc="lower left")
 plt.savefig("plot.png")
-
